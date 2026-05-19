@@ -24,4 +24,26 @@ const registerUser = async (data) => {
   );
   return { user, token };
 };
-module.exports = { registerUser };
+
+const loginUser = async (data) => {
+  const { email, password } = data;
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw new AppError("Invalid email", 401);
+  }
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    throw new AppError("Invalid credentials", 401);
+  }
+  const token = jwt.sign(
+    {
+      id: user._id,
+      email: user.email,
+    },
+    JWT_SECRET,
+    { expiresIn: EXPIRES_IN },
+  );
+  return { user, token };
+};
+
+module.exports = { registerUser, loginUser };
