@@ -12,7 +12,7 @@ const verifyToken = async (req, res, next) => {
   const token = header.split(" ")[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
+    req.user = decoded; // attaches the user's identity to the request
     next();
   } catch (error) {
     if (error.name === "TokenExpiredError") {
