@@ -46,4 +46,10 @@ const loginUser = async (data) => {
   return { user, token };
 };
 
-module.exports = { registerUser, loginUser };
+const list = async (userId) => {
+  return await User.find({
+    _id: { $ne: userId },
+  }).select("name email");
+};
+
+module.exports = { registerUser, loginUser, list };

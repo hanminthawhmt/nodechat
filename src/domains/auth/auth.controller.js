@@ -41,4 +41,18 @@ const handleLogin = async (req, res, next) => {
   }
 };
 
-module.exports = { handleRegister, handleLogin };
+const handleGetUsersList = async (req, res, next) => {
+  try {
+    const currentUserId = req.user.id;
+    const usersList = await authService.list(currentUserId);
+    res.status(200).json({
+      success: true,
+      results: usersList.length,
+      data: usersList,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { handleRegister, handleLogin, handleGetUsersList };
