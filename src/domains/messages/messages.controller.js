@@ -15,7 +15,7 @@ const handleGetMessages = async (req, res, next) => {
       ? await messagesService.getMessagesByRoom(room)
       : await messagesService.getDirectMessages(req.user.id, receiverId);
 
-    return res.status(200).json({ success: true, messages });
+    return res.status(200).json({ success: true, message });
   } catch (error) {
     next(error);
   }

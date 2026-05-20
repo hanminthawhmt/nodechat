@@ -18,20 +18,27 @@ const saveMessage = async ({ senderId, receiverId, room, content }) => {
 
 const getMessagesByRoom = async (room) => {
   return Message.find({ room })
-    .populate("sender", "name email")
-    .sort({ createdAt: 1 })
+    .populate([
+      { path: "sender", select: "name email" },
+      { path: "receiver", select: "name email" },
+    ])
+    .sort({ createdAt: 1 }) // asecding order, -1 = descending order
     .limit(50);
 };
 
 const getDirectMessages = async (userId, receiverId) => {
   return Message.find({
+    // $ne = not equal
     receiver: { $ne: null }, // is a DM
     $or: [
       { sender: userId, receiver: receiverId },
       { sender: receiverId, receiver: userId }, // both directions
     ],
   })
-    .populate("sender", "name email")
+    .populate([
+      { path: "sender", select: "name email" },
+      { path: "receiver", select: "name email" },
+    ])
     .sort({ createdAt: 1 })
     .limit(50);
 };
