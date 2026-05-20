@@ -8,7 +8,7 @@ const registerUser = async (data) => {
   const { name, email, password } = data;
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    throw new Error("Email already in use", 409);
+    throw new AppError("Email already in use", 409);
   }
   const salt = await bcrypt.genSalt(Number(SALT));
   const hashedPassword = await bcrypt.hash(password, salt);
