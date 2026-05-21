@@ -1,4 +1,5 @@
 const User = require("../../models/User");
+const AppError = require("../../utils/AppError");
 
 const findUserByEmail = async (email, userId) => {
   const user = await User.findOne({ email }).select("name email _id");
