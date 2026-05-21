@@ -2,13 +2,15 @@ const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("./env");
 const messagesService = require("../domains/messages/messages.service");
-
+const roomsService = require("../domains/rooms/rooms.service");
 const onlineUsers = new Map();
+let _io = null;
 const initSocket = (httpServer) => {
   // create socket.io server and attaches to the httpServer
   const io = new Server(httpServer, {
     cors: { origin: "*" },
   });
+  _io = io;
 
   // socket middleware
   io.use((socket, next) => {
@@ -37,9 +39,19 @@ const initSocket = (httpServer) => {
     onlineUsers.set(socket.user.id, socket.id);
 
     // join a room
-    socket.on("join_room", (room) => {
-      socket.join(room);
-      console.log(`${socket.user.email} joined room: ${room}`);
+    socket.on("join_room", async (roomId) => {
+      try {
+        const room = await roomsService.getRoomById(roomId);
+        if (!roomsService.isRoomMember(room, socket.user.id)) {
+          return socket.emit("error", {
+            message: "You are not a member of this room",
+          });
+        }
+        socket.join(roomId);
+        console.log(`${socket.user.email} joined room: ${room.name}`);
+      } catch (error) {
+        socket.emit("error", { message: error.message });
+      }
     });
 
     // send a message
@@ -63,7 +75,7 @@ const initSocket = (httpServer) => {
           socket.emit("receive_message", message);
         }
       } catch (error) {
-        socket.emit("error", { message: "Failed to send message" });
+        socket.emit("error", { message: error.message });
       }
     });
 
@@ -72,7 +84,11 @@ const initSocket = (httpServer) => {
       console.log(`User disconnected: ${socket.user.email}`);
     });
   });
-  return io;
+  return { io, onlineUsers };
 };
 
-module.exports = initSocket;
+module.exports = {
+  initSocket,
+  getIO: () => _io,
+  getOnlineUsers: () => onlineUsers,
+};

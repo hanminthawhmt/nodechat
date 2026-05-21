@@ -54,7 +54,13 @@ const joinRoom = async ({ roomId, userId }) => {
   return room;
 };
 
-const inviteToRoom = async ({ roomId, inviterId, inviteeId }) => {
+const inviteToRoom = async ({
+  roomId,
+  inviterId,
+  inviteeId,
+  io,
+  onlineUsers,
+}) => {
   const room = await Room.findById(roomId);
   if (!room) throw new Error(new AppError("Room not found", 404));
   const isMember = room.members.some(
@@ -69,6 +75,12 @@ const inviteToRoom = async ({ roomId, inviterId, inviteeId }) => {
     throw new Error(new AppError("User is already a member", 409));
   room.push(inviteeId);
   await room.save();
+  const inviteeSocketId = onlineUsers.get(inviteeId);
+  if (inviteeSocketId && io) {
+    io.to(inviteeSocketId).emit("user_invited", {
+      room: { id: room._id, name: room.name, type: room.type },
+    });
+  }
   return room;
 };
 

@@ -1,4 +1,5 @@
 const roomsService = require("./rooms.service");
+const { getIO, getOnlineUsers } = require("../../config/socket");
 
 const handleCreateRoom = async (req, res, next) => {
   try {
@@ -57,6 +58,8 @@ const handleInviteToRoom = async (req, res, next) => {
       roomId: roomId,
       inviterId: userId,
       inviteeId: inviteeId,
+      io: getIO(),
+      onlineUsers: getOnlineUsers(),
     });
     return res.status(200).json({ success: true, data: room });
   } catch (error) {
