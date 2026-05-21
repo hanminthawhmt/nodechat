@@ -9,10 +9,9 @@ const saveMessage = async ({ senderId, receiverId, room, content }) => {
   if (room) {
     const roomDoc = await getRoomById(room);
 
-    if (!roomsService.isRoomMember(roomDoc, senderId)) {
+    if (!isRoomMember(roomDoc, senderId)) {
       throw new AppError("You are not a member of this room", 403);
     }
-    
   }
 
   const message = await Message.create({

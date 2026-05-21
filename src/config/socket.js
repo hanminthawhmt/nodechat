@@ -72,7 +72,7 @@ const initSocket = (httpServer) => {
             // DM — emit only to receiver's socket
             io.to(receiverSocketId).emit("receive_message", message);
           }
-          socket.emit("receive_message", message);
+          //socket.emit("receive_message", message);
         }
       } catch (error) {
         socket.emit("error", { message: error.message });

@@ -2,9 +2,9 @@ const Room = require("../../models/Room");
 const AppError = require("../../utils/AppError");
 
 const createRoom = async ({ name, type, userId }) => {
-  const existingRoom = await Room.findOne({ where: name });
+  const existingRoom = await Room.findOne({ name });
   if (existingRoom) {
-    throw new Error(new AppError("Room name already taken", 409));
+    throw new AppError("Room name already taken", 409);
   }
   const room = await Room.create({
     name: name,
@@ -28,7 +28,7 @@ const getRoomById = async (roomId) => {
     .populate("members", "name email");
 
   if (!room) {
-    throw new Error(new AppError("Room not found", 404));
+    throw new AppError("Room not found", 404);
   }
   return room;
 };
@@ -36,18 +36,16 @@ const getRoomById = async (roomId) => {
 const joinRoom = async ({ roomId, userId }) => {
   const room = await Room.findById(roomId);
   if (!room) {
-    throw new Error(new AppError("Room not found", 404));
+    throw new AppError("Room not found", 404);
   }
   if (room.type === "private") {
-    throw new Error(
-      new AppError("Cannot join a private room without an invite", 403),
-    );
+    throw new AppError("Cannot join a private room without an invite", 403);
   }
   const alreadyAMember = room.members.some(
     (member) => member._id.toString() === userId,
   );
   if (alreadyAMember) {
-    throw new Error(new AppError("Already a member", 409));
+    throw new AppError("Already a member", 409);
   }
   room.members.push(userId);
   await room.save();
@@ -62,18 +60,16 @@ const inviteToRoom = async ({
   onlineUsers,
 }) => {
   const room = await Room.findById(roomId);
-  if (!room) throw new Error(new AppError("Room not found", 404));
+  if (!room) throw new AppError("Room not found", 404);
   const isMember = room.members.some(
     (member) => member._id.toString() === inviterId,
   );
-  if (!isMember)
-    throw new Error(new AppError("Only members can invite others", 403));
+  if (!isMember) throw new AppError("Only members can invite others", 403);
   const alreadyAMember = room.members.some(
     (member) => member._id.toString() === inviteeId,
   );
-  if (alreadyAMember)
-    throw new Error(new AppError("User is already a member", 409));
-  room.push(inviteeId);
+  if (alreadyAMember) throw new AppError("User is already a member", 409);
+  room.members.push(inviteeId);
   await room.save();
   const inviteeSocketId = onlineUsers.get(inviteeId);
   if (inviteeSocketId && io) {
