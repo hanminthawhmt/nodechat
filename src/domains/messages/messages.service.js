@@ -1,9 +1,18 @@
 const Message = require("../../models/Message");
 const AppError = require("../../utils/AppError");
+const { getRoomById, isRoomMember } = require("../rooms/rooms.service");
 
 const saveMessage = async ({ senderId, receiverId, room, content }) => {
   if (!room && !receiverId) {
     throw new AppError("Either room or receiverId is required", 400);
+  }
+  if (room) {
+    const roomDoc = await getRoomById(room);
+
+    if (!roomsService.isRoomMember(roomDoc, senderId)) {
+      throw new AppError("You are not a member of this room", 403);
+    }
+    
   }
 
   const message = await Message.create({
