@@ -5,6 +5,6 @@ const http = require("http");
 
 const httpServer = http.createServer(app);
 const { io, onlineUsers } = initSocket(httpServer);
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT || 5000, () => {
   console.log(`Server is listening on PORT `, PORT);
 });

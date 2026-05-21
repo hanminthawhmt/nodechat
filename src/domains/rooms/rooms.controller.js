@@ -11,7 +11,7 @@ const handleCreateRoom = async (req, res, next) => {
       userId: userId,
     });
     return res.status(201).json({
-      status: true,
+      success: true,
       data: room,
     });
   } catch (error) {
@@ -23,7 +23,7 @@ const handleGetPublicRooms = async (req, res, next) => {
   try {
     const rooms = await roomsService.getPublicRooms();
     return res.status(201).json({
-      status: true,
+      success: true,
       data: rooms,
     });
   } catch (error) {

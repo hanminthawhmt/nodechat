@@ -1,6 +1,7 @@
 const usersService = require("./users.service");
 
 const handleFindUserByEmail = async (req, res, next) => {
+  console.log("req.user", req.user); // ← add this
   try {
     const { email } = req.query;
     if (!email)

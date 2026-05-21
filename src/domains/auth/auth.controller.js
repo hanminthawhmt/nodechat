@@ -12,7 +12,7 @@ const handleRegister = async (req, res, next) => {
       success: true,
       token: token,
       user: {
-        id: user._id,
+        id: user.id,
         name: user.name,
         email: user.email,
       },
@@ -34,7 +34,7 @@ const handleLogin = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       token,
-      user: { id: user._id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email },
     });
   } catch (error) {
     next(error);

@@ -4,7 +4,7 @@ const AppError = require("../../utils/AppError");
 const findUserByEmail = async (email, userId) => {
   const user = await User.findOne({ email }).select("name email _id");
   if (!user) throw new AppError("User not found", 404);
-  if (user._id.toString() === requesterId.toString()) {
+  if (user._id.toString() === userId.toString()) {
     throw new AppError("That's you!", 400);
   }
   return user;

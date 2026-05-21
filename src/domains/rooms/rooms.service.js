@@ -17,15 +17,15 @@ const createRoom = async ({ name, type, userId }) => {
 
 const getPublicRooms = async () => {
   return Room.find({ type: "public" })
-    .populate("createdBy name email")
-    .populate("members name email")
+    .populate("createdBy", "name email")
+    .populate("members", "name email")
     .sort({ createdAt: -1 });
 };
 
 const getRoomById = async (roomId) => {
   const room = await Room.findById(roomId)
-    .populate("createdBy name email")
-    .populate("members name email");
+    .populate("createdBy", "name email")
+    .populate("members", "name email");
 
   if (!room) {
     throw new Error(new AppError("Room not found", 404));
