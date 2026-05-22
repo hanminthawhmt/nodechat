@@ -22,6 +22,13 @@ const getPublicRooms = async () => {
     .sort({ createdAt: -1 });
 };
 
+const getUserRooms = async (userId) => {
+  return Room.find({ members: userId })
+    .populate("createdBy", "name email")
+    .populate("members", "name email")
+    .sort({ createdAt: -1 });
+};
+
 const getRoomById = async (roomId) => {
   const room = await Room.findById(roomId)
     .populate("createdBy", "name email")
@@ -87,6 +94,7 @@ const isRoomMember = (room, userId) => {
 module.exports = {
   createRoom,
   getPublicRooms,
+  getUserRooms,
   getRoomById,
   joinRoom,
   inviteToRoom,

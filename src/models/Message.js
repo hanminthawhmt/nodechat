@@ -12,8 +12,9 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
     },
     room: {
-      type: String,
-      default: "general",
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
+      default: null,
     },
     content: {
       type: String,

@@ -24,8 +24,8 @@ const saveMessage = async ({ senderId, receiverId, room, content }) => {
   return message.populate("sender", "name email");
 };
 
-const getMessagesByRoom = async (room) => {
-  return Message.find({ room })
+const getMessagesByRoom = async (roomId) => {
+  return Message.find({ room: roomId })
     .populate([
       { path: "sender", select: "name email" },
       { path: "receiver", select: "name email" },

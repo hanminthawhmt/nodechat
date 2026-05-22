@@ -12,7 +12,20 @@ const handleCreateRoom = async (req, res, next) => {
     });
     return res.status(201).json({
       success: true,
-      data: room,
+      room: room,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const handleGetUserRooms = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const rooms = await roomsService.getUserRooms(userId);
+    return res.status(200).json({
+      success: true,
+      data: rooms,
     });
   } catch (error) {
     next(error);
@@ -22,7 +35,7 @@ const handleCreateRoom = async (req, res, next) => {
 const handleGetPublicRooms = async (req, res, next) => {
   try {
     const rooms = await roomsService.getPublicRooms();
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
       data: rooms,
     });
@@ -39,7 +52,7 @@ const handleJoinRoom = async (req, res, next) => {
       roomId: roomId,
       userId: userId,
     });
-    return res.status(200).json({ success: true, data: room });
+    return res.status(200).json({ success: true, room: room });
   } catch (error) {
     next(error);
   }
@@ -61,7 +74,7 @@ const handleInviteToRoom = async (req, res, next) => {
       io: getIO(),
       onlineUsers: getOnlineUsers(),
     });
-    return res.status(200).json({ success: true, data: room });
+    return res.status(200).json({ success: true, room: room });
   } catch (error) {
     next(error);
   }
@@ -69,6 +82,7 @@ const handleInviteToRoom = async (req, res, next) => {
 
 module.exports = {
   handleCreateRoom,
+  handleGetUserRooms,
   handleGetPublicRooms,
   handleJoinRoom,
   handleInviteToRoom,
