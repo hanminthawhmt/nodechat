@@ -110,10 +110,4 @@ Main routes are mounted under `/api/v1`:
 - The app currently uses a static SPA-style browser client rather than a framework.
 - For production, make sure your MongoDB connection, CORS configuration, and Socket.IO origins are properly configured for your deployment domain.
 
-## Optional next steps
 
-- Add a `.env.example` file
-- Add automated tests
-- Add API documentation
-- Improve error handling and validation
-- Add deployment documentation for Docker or hosting providers
