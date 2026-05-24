@@ -12,6 +12,8 @@ let foundInviteUser = null;
 
 // ── INIT ──
 window.addEventListener("DOMContentLoaded", () => {
+  initializeAuthFlow();
+
   if (token && currentUser) {
     showApp();
     connectSocket();
@@ -32,6 +34,50 @@ function switchAuthTab(mode) {
   document.getElementById("auth-submit-btn").textContent =
     mode === "login" ? "Sign in" : "Create account";
   document.getElementById("auth-error").classList.add("hidden");
+}
+
+function initializeAuthFlow() {
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get("error");
+  const tokenFromQuery = params.get("token");
+  const userFromQuery = params.get("user");
+
+  if (error) {
+    window.history.replaceState({}, "", "/");
+    if (error === "google_failed") {
+      showAuthError("Google sign in failed. Please try again.");
+    } else {
+      showToast("Google sign in failed", "error");
+    }
+    return;
+  }
+
+  if (!tokenFromQuery || !userFromQuery) {
+    return;
+  }
+
+  try {
+    const parsedUser = JSON.parse(decodeURIComponent(userFromQuery));
+
+    token = tokenFromQuery;
+    currentUser = {
+      id: parsedUser.id || parsedUser._id,
+      name: parsedUser.name,
+      email: parsedUser.email,
+    };
+
+    localStorage.setItem("nc_token", token);
+    localStorage.setItem("nc_user", JSON.stringify(currentUser));
+    window.history.replaceState({}, "", "/");
+    showToast("Signed in with Google", "success");
+  } catch (err) {
+    window.history.replaceState({}, "", "/");
+    showAuthError("Unable to finish Google sign in.");
+  }
+}
+
+function startGoogleAuth() {
+  window.location.href = "/api/v1/auth/google";
 }
 
 async function handleAuth() {
