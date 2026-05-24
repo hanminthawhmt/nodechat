@@ -1,47 +1,118 @@
 # NodeChat
 
-NodeChat is a real-time chat application built with Node.js, Express, MongoDB, and Socket.IO. It supports authentication, public/private rooms, direct messages, and live messaging in a lightweight browser-based UI.
+A real-time chat application built with Node.js, Express, MongoDB, and Socket.IO. Supports JWT authentication, Google OAuth, public and private rooms, direct messages, and live messaging in a lightweight browser-based UI.
+
+**Live:** [https://nodechat-svq1.onrender.com](https://nodechat-svq1.onrender.com)
+
+---
 
 ## Features
 
 - Email/password registration and login
 - Google OAuth sign-in
-- Live real-time messaging with Socket.IO
+- Real-time messaging with Socket.IO
 - Public and private rooms
 - Direct messages between users
 - User search by email for starting DMs
 - Room browsing and room invitations
-- Session persistence via local storage in the browser
+- Session persistence via localStorage
 
-## Project structure
+---
 
-- `index.js` – starts the HTTP server
-- `src/app.js` – Express app configuration
-- `src/config/` – environment, database, passport, and Socket.IO setup
-- `src/domains/` – route, controller, and service modules for auth, users, rooms, messages, and DMs
-- `public/` – static frontend assets (`index.html`, `style.css`, `client.js`)
+## Tech Stack
 
-## Tech stack
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js |
+| Framework | Express |
+| Real-time | Socket.IO |
+| Database | MongoDB via Mongoose |
+| Authentication | JWT + Passport.js (Google OAuth) |
+| Frontend | Vanilla HTML, CSS, JavaScript |
 
-- **Backend:** Node.js, Express, Socket.IO
-- **Database:** MongoDB via Mongoose
-- **Authentication:** JWT + Passport.js (Google OAuth)
-- **Frontend:** Vanilla HTML, CSS, and JavaScript
+---
+
+## Project Structure
+
+```
+nodechat/
+├── index.js                  # HTTP server entry point
+├── public/                   # Static frontend
+│   ├── index.html
+│   ├── style.css
+│   └── client.js
+└── src/
+    ├── app.js                # Express app configuration
+    ├── config/
+    │   ├── db.js             # MongoDB connection
+    │   ├── env.js            # Environment variables
+    │   ├── passport.js       # Google OAuth strategy
+    │   └── socket.js         # Socket.IO setup
+    ├── domains/
+    │   ├── auth/             # register, login, Google OAuth
+    │   ├── messages/         # message history and delivery
+    │   ├── rooms/            # room creation, membership, invites
+    │   └── users/            # user search
+    ├── middleware/
+    │   ├── authMiddleware.js # JWT verification
+    │   └── errorHandler.js  # global error handler
+    ├── models/
+    │   ├── User.js
+    │   ├── Message.js
+    │   └── Room.js
+    └── route/
+        └── route.js          # central router
+```
+
+---
+
+## API Overview
+
+All routes are mounted under `/api/v1`:
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| POST | `/auth/register` | — | Register with email and password |
+| POST | `/auth/login` | — | Login with email and password |
+| GET | `/auth/google` | — | Initiate Google OAuth |
+| GET | `/auth/google/callback` | — | Google OAuth callback |
+| GET | `/users/search?email=` | ✓ | Find user by email |
+| GET | `/rooms` | ✓ | List public rooms |
+| POST | `/rooms` | ✓ | Create a room |
+| POST | `/rooms/:id/join` | ✓ | Join a public room |
+| POST | `/rooms/:id/invite` | ✓ | Invite user to private room |
+| GET | `/messages?room=` | ✓ | Get room message history |
+| GET | `/messages?receiverId=` | ✓ | Get DM history |
+
+## Socket.IO Events
+
+| Event | Direction | Description |
+|---|---|---|
+| `join_room` | client → server | Join a room by ID |
+| `send_message` | client → server | Send a room or DM message |
+| `receive_message` | server → client | Incoming message |
+| `room_joined` | server → client | Room join confirmed with history |
+| `user_invited` | server → client | Notified when added to a private room |
+| `error` | server → client | Error from a socket event |
+
+---
 
 ## Prerequisites
 
 - Node.js 18+
 - npm
-- MongoDB instance (local or remote)
+- MongoDB instance (local or Atlas)
 
-## Environment variables
+---
 
-Create a `.env` file in the project root with the following variables:
+## Environment Variables
+
+Create a `.env` file at the project root:
 
 ```env
 PORT=3000
 MONGO_URI=your-mongodb-connection-string
-SALT=your-salt
+SALT=10
 JWT_SECRET=your-jwt-secret
 EXPIRES_IN=7d
 SESSION_SECRET=your-session-secret
@@ -49,65 +120,57 @@ GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
-> The current frontend is configured to call `http://localhost:3000`. If you prefer a different port, update the client accordingly.
+---
 
-## Installation
+## Running Locally
 
 ```bash
+# install dependencies
 npm install
-```
 
-## Running locally
-
-### Development
-
-```bash
+# development (with nodemon)
 npm run dev
-```
 
-### Production
-
-```bash
+# production
 npm start
 ```
 
-Then open `http://localhost:3000` in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## How it works
+---
 
-### Server
+## Deployment
 
-- `index.js` creates an HTTP server and initializes Socket.IO.
-- `src/app.js` mounts the API under `/api/v1`, serves the static frontend from `public/`, and enables session-based authentication.
-- `src/config/db.js` connects the app to MongoDB.
+The app is deployed as a single service on [Render](https://render.com). Express serves the static frontend from `public/` and the API and Socket.IO run on the same server.
 
-### Frontend
+### Render Settings
 
-- `public/index.html` provides the chat UI shell.
-- `public/style.css` contains the styling.
-- `public/client.js` handles:
-  - auth flows
-  - room and DM loading
-  - Socket.IO event listeners
-  - message rendering
-  - room creation and invite flows
+| Setting | Value |
+|---|---|
+| Build command | `npm install` |
+| Start command | `node index.js` |
+| Node version | 18+ |
 
-### API overview
+### Required Environment Variables on Render
 
-Main routes are mounted under `/api/v1`:
+Same as above, plus:
+```
+NODE_ENV=production
+```
 
-- `/auth/register` – register a new user
-- `/auth/login` – sign in with email/password
-- `/auth/google` – initiate Google OAuth
-- `/users` – user-related endpoints
-- `/rooms` – room listing, creation, and membership operations
-- `/dms` – direct message conversation management
-- `/messages` – message history and message delivery logic
+> Do not add `PORT` — Render injects it automatically.
+
+### Google OAuth on Production
+
+Add the following to your authorized redirect URIs in Google Cloud Console:
+```
+https://nodechat-svq1.onrender.com/api/v1/auth/google/callback
+```
+
+---
 
 ## Notes
 
-- There is no build step required for the current frontend.
-- The app currently uses a static SPA-style browser client rather than a framework.
-- For production, make sure your MongoDB connection, CORS configuration, and Socket.IO origins are properly configured for your deployment domain.
-
-
+- No build step required — the frontend is plain HTML, CSS, and JavaScript
+- Render free tier spins down after 15 minutes of inactivity — first request after spin-down may take ~30 seconds
+- For production use, tighten the Socket.IO and Express CORS settings to your specific frontend origin
