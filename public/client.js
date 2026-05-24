@@ -1,4 +1,4 @@
-const API = "http://localhost:3000/api/v1";
+const API = "/api/v1";
 
 // ── STATE ──
 let token = localStorage.getItem("nc_token") || null;
@@ -160,7 +160,7 @@ function logout() {
 
 // ── SOCKET ──
 function connectSocket() {
-  socket = io("http://localhost:3000", { auth: { token } });
+  socket = io("/", { auth: { token } });
 
   socket.on("connect", () => {
     setConnStatus(true);
