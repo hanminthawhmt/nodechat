@@ -12,7 +12,7 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const user = await User.findOne({ googleId: profile.id });
+        let user = await User.findOne({ googleId: profile.id });
         if (user) {
           // existing google user -> just return them
           return done(null, user);
@@ -35,7 +35,7 @@ passport.use(
 
         return done(null, user);
       } catch (error) {
-        return done(err, null);
+        return done(error, null);
       }
     },
   ),
