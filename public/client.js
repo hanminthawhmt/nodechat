@@ -114,17 +114,94 @@ async function handleAuth() {
     loadDMContacts();
     renderDMList();
   } catch (err) {
-    showAuthError(err.message);
+    showAuthError(err);
   } finally {
     btn.disabled = false;
     btn.textContent = authMode === "login" ? "Sign in" : "Create account";
   }
 }
 
-function showAuthError(msg) {
+function normalizeErrorMessage(err) {
+  const raw = err?.message || err || "";
+  const message = String(raw).trim();
+  const lowered = message.toLowerCase();
+
+  if (!message) return "Something went wrong. Please try again.";
+
+  if (
+    lowered.includes("invalid credentials") ||
+    lowered.includes("incorrect email") ||
+    lowered.includes("wrong password")
+  ) {
+    return "Incorrect email or password. Please try again.";
+  }
+
+  if (lowered.includes("email already in use")) {
+    return "That email is already registered. Try signing in instead.";
+  }
+
+  if (lowered.includes("user not found")) {
+    return "We couldn't find that user. Check the email and try again.";
+  }
+
+  if (lowered.includes("room name already taken")) {
+    return "That room name is already taken. Choose a different name.";
+  }
+
+  if (lowered.includes("cannot join a private room without an invite")) {
+    return "This room is private. Ask a room member to invite you.";
+  }
+
+  if (lowered.includes("already a member")) {
+    return "You're already in this room.";
+  }
+
+  if (lowered.includes("only members can invite others")) {
+    return "Only room members can send invites.";
+  }
+
+  if (lowered.includes("user is already a member")) {
+    return "That person is already in the room.";
+  }
+
+  if (lowered.includes("room not found")) {
+    return "That room is no longer available or you don't have access.";
+  }
+
+  if (
+    lowered.includes("failed to fetch") ||
+    lowered.includes("network request failed") ||
+    lowered.includes("xhr poll error") ||
+    lowered.includes("request failed")
+  ) {
+    return "We couldn't reach the server. Check your connection and try again.";
+  }
+
+  if (
+    lowered.includes("token expired") ||
+    lowered.includes("invalid token") ||
+    lowered.includes("no token provided")
+  ) {
+    return "Your session has expired. Please sign in again.";
+  }
+
+  return message;
+}
+
+function showAuthError(err) {
   const el = document.getElementById("auth-error");
-  el.textContent = msg;
+  el.textContent = normalizeErrorMessage(err);
   el.classList.remove("hidden");
+}
+
+function setInlineError(el, err) {
+  el.textContent = normalizeErrorMessage(err);
+  el.classList.remove("hidden");
+}
+
+function clearInlineError(el) {
+  el.textContent = "";
+  el.classList.add("hidden");
 }
 
 function showApp() {
@@ -456,7 +533,7 @@ async function openBrowseRooms() {
   } catch (e) {
     console.log("browse rooms error:", e);
     list.innerHTML =
-      '<div style="padding:20px;text-align:center;color:var(--red)">Failed to load rooms</div>';
+      '<div style="padding:20px;text-align:center;color:var(--red)">Couldn’t load public rooms right now. Please try again.</div>';
   }
 }
 
@@ -468,7 +545,7 @@ async function joinRoom(roomId) {
     closeModal("modal-browse");
     openRoom(res.room);
   } catch (err) {
-    showToast(err.message, "error");
+    showToast(normalizeErrorMessage(err), "error");
   }
 }
 
@@ -484,7 +561,7 @@ function goToRoom(roomId) {
 function openCreateRoom() {
   openModal("modal-create-room");
   document.getElementById("create-room-name").value = "";
-  document.getElementById("create-room-error").classList.add("hidden");
+  clearInlineError(document.getElementById("create-room-error"));
 }
 
 async function createRoom() {
@@ -492,9 +569,10 @@ async function createRoom() {
   const type = document.querySelector('input[name="room-type"]:checked').value;
   const errEl = document.getElementById("create-room-error");
 
+  clearInlineError(errEl);
+
   if (!name) {
-    errEl.textContent = "Room name is required";
-    errEl.classList.remove("hidden");
+    setInlineError(errEl, "Please enter a room name first.");
     return;
   }
 
@@ -505,8 +583,7 @@ async function createRoom() {
     closeModal("modal-create-room");
     openRoom(res.room);
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove("hidden");
+    setInlineError(errEl, err);
   }
 }
 
@@ -515,7 +592,7 @@ function openDMSearch() {
   openModal("modal-dm-search");
   document.getElementById("dm-search-email").value = "";
   document.getElementById("dm-search-result").classList.add("hidden");
-  document.getElementById("dm-search-error").classList.add("hidden");
+  clearInlineError(document.getElementById("dm-search-error"));
 }
 
 async function searchUser() {
@@ -524,9 +601,12 @@ async function searchUser() {
   const errEl = document.getElementById("dm-search-error");
 
   resultEl.classList.add("hidden");
-  errEl.classList.add("hidden");
+  clearInlineError(errEl);
 
-  if (!email) return;
+  if (!email) {
+    setInlineError(errEl, "Enter an email address to search.");
+    return;
+  }
 
   try {
     const res = await apiFetch(
@@ -545,8 +625,7 @@ async function searchUser() {
     `;
     resultEl.classList.remove("hidden");
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove("hidden");
+    setInlineError(errEl, err);
   }
 }
 
@@ -569,7 +648,7 @@ function openInviteModal() {
   openModal("modal-invite");
   document.getElementById("invite-search-email").value = "";
   document.getElementById("invite-search-result").classList.add("hidden");
-  document.getElementById("invite-error").classList.add("hidden");
+  clearInlineError(document.getElementById("invite-error"));
   foundInviteUser = null;
 }
 
@@ -579,10 +658,13 @@ async function searchUserForInvite() {
   const errEl = document.getElementById("invite-error");
 
   resultEl.classList.add("hidden");
-  errEl.classList.add("hidden");
+  clearInlineError(errEl);
   foundInviteUser = null;
 
-  if (!email) return;
+  if (!email) {
+    setInlineError(errEl, "Enter an email address to find a person to invite.");
+    return;
+  }
 
   try {
     const res = await apiFetch(
@@ -601,14 +683,15 @@ async function searchUserForInvite() {
     `;
     resultEl.classList.remove("hidden");
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove("hidden");
+    setInlineError(errEl, err);
   }
 }
 
 async function inviteUser() {
   if (!foundInviteUser || !activeChat) return;
   const errEl = document.getElementById("invite-error");
+
+  clearInlineError(errEl);
 
   try {
     await apiFetch(`/rooms/${activeChat.id}/invite`, "POST", {
@@ -621,8 +704,7 @@ async function inviteUser() {
     closeModal("modal-invite");
     loadMyRooms();
   } catch (err) {
-    errEl.textContent = err.message;
-    errEl.classList.remove("hidden");
+    setInlineError(errEl, err);
   }
 }
 
@@ -643,11 +725,51 @@ async function apiFetch(path, method = "GET", body = null, auth = true) {
   if (auth && token) opts.headers["Authorization"] = `Bearer ${token}`;
   if (body) opts.body = JSON.stringify(body);
 
-  const res = await fetch(API + path, opts);
-  const data = await res.json();
+  let res;
+  try {
+    res = await fetch(API + path, opts);
+  } catch (err) {
+    throw new Error(err.message || "Network request failed");
+  }
 
-  if (!data.success) throw new Error(data.message || "Request failed");
-  return data;
+  let payload = null;
+  const contentType = res.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    try {
+      payload = await res.json();
+    } catch (err) {
+      payload = null;
+    }
+  } else {
+    try {
+      payload = await res.text();
+    } catch (err) {
+      payload = null;
+    }
+  }
+
+  if (!res.ok) {
+    const message =
+      payload?.message ||
+      payload?.error ||
+      payload ||
+      `Request failed (${res.status})`;
+    throw new Error(message);
+  }
+
+  if (payload && typeof payload === "object" && "success" in payload) {
+    if (!payload.success) {
+      throw new Error(payload.message || payload.error || "Request failed");
+    }
+    return payload;
+  }
+
+  if (payload && typeof payload === "object" && payload.error) {
+    throw new Error(payload.error);
+  }
+
+  return payload;
 }
 
 // ── TOAST ──
