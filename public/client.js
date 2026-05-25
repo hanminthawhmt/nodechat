@@ -9,10 +9,16 @@ let myRooms = []; // rooms I'm a member of
 let dmContacts = []; // DM conversations loaded from server
 let authMode = "login";
 let foundInviteUser = null;
+let lastFocusedElement = null;
+let mobileSidebarOpen = false;
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 // ── INIT ──
 window.addEventListener("DOMContentLoaded", () => {
   initializeAuthFlow();
+  initializeAccessibility();
+  updateMobileSidebarState();
 
   if (token && currentUser) {
     showApp();
@@ -20,6 +26,10 @@ window.addEventListener("DOMContentLoaded", () => {
     loadMyRooms();
     loadDMContacts();
   }
+});
+
+window.addEventListener("resize", () => {
+  updateMobileSidebarState();
 });
 
 // ── AUTH ──
@@ -207,6 +217,7 @@ function clearInlineError(el) {
 function showApp() {
   document.getElementById("auth-screen").classList.add("hidden");
   document.getElementById("app-screen").classList.remove("hidden");
+  updateMobileSidebarState();
 
   if (currentUser) {
     document.getElementById("sidebar-avatar").textContent = (currentUser.name ||
@@ -214,6 +225,49 @@ function showApp() {
     document.getElementById("sidebar-name").textContent =
       currentUser.name || currentUser.email;
     document.getElementById("sidebar-email").textContent = currentUser.email;
+  }
+}
+
+function toggleMobileSidebar() {
+  mobileSidebarOpen = !mobileSidebarOpen;
+  updateMobileSidebarState();
+}
+
+function closeMobileSidebar() {
+  mobileSidebarOpen = false;
+  updateMobileSidebarState();
+}
+
+function updateMobileSidebarState() {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("mobile-sidebar-overlay");
+  const toggle = document.getElementById("sidebar-toggle-btn");
+  const isMobile = window.innerWidth < 980;
+
+  if (!sidebar) return;
+
+  if (isMobile) {
+    sidebar.classList.toggle("sidebar-open", mobileSidebarOpen);
+    if (overlay) {
+      overlay.classList.toggle("hidden", !mobileSidebarOpen);
+      overlay.setAttribute("aria-hidden", String(!mobileSidebarOpen));
+    }
+
+    if (toggle) {
+      toggle.classList.remove("hidden");
+      toggle.setAttribute("aria-expanded", String(mobileSidebarOpen));
+    }
+  } else {
+    sidebar.classList.remove("sidebar-open");
+    if (overlay) {
+      overlay.classList.add("hidden");
+      overlay.setAttribute("aria-hidden", "true");
+    }
+
+    if (toggle) {
+      toggle.classList.add("hidden");
+      toggle.setAttribute("aria-expanded", "false");
+    }
   }
 }
 
@@ -280,13 +334,65 @@ function connectSocket() {
 function setConnStatus(connected) {
   const el = document.getElementById("conn-indicator");
   el.classList.toggle("connected", connected);
+  el.setAttribute("aria-label", connected ? "Connected" : "Offline");
   document.getElementById("conn-label").textContent = connected
     ? "online"
     : "offline";
 }
 
+function initializeAccessibility() {
+  const msgInput = document.getElementById("msg-input");
+  if (msgInput) {
+    msgInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  ["input-email", "input-password", "input-name"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleAuth();
+      }
+    });
+  });
+
+  const dmSearch = document.getElementById("dm-search-email");
+  if (dmSearch) {
+    dmSearch.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        searchUser();
+      }
+    });
+  }
+
+  const inviteSearch = document.getElementById("invite-search-email");
+  if (inviteSearch) {
+    inviteSearch.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        searchUserForInvite();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAllModals();
+    }
+  });
+}
+
 // ── ROOMS ──
 async function loadMyRooms() {
+  renderRoomList(true);
+
   try {
     const res = await apiFetch("/rooms");
     console.log("rooms response:", res);
@@ -297,10 +403,14 @@ async function loadMyRooms() {
     renderRoomList();
   } catch (e) {
     console.error("loadMyRooms error:", e);
+    myRooms = [];
+    renderRoomList();
   }
 }
 
 async function loadDMContacts() {
+  renderDMList(true);
+
   try {
     const res = await apiFetch("/dms");
     dmContacts = res.data || [];
@@ -308,12 +418,37 @@ async function loadDMContacts() {
   } catch (e) {
     console.error("loadDMContacts error:", e);
     dmContacts = [];
+    renderDMList();
   }
 }
 
-function renderRoomList() {
+function renderRoomList(loading = false) {
   const list = document.getElementById("room-list");
   list.innerHTML = "";
+
+  if (loading) {
+    [1, 2, 3].forEach(() => {
+      const item = document.createElement("div");
+      item.className = "channel-item channel-skeleton";
+      item.innerHTML = `
+        <span class="skeleton-chip"></span>
+        <span class="skeleton-line full"></span>
+      `;
+      list.appendChild(item);
+    });
+    return;
+  }
+
+  if (!myRooms.length) {
+    list.innerHTML = `
+      <div class="channel-empty">
+        <p>No rooms yet</p>
+        <span>Create a room or browse public spaces to get started.</span>
+      </div>
+    `;
+    return;
+  }
+
   myRooms.forEach((room) => {
     const item = document.createElement("div");
     item.className =
@@ -328,9 +463,33 @@ function renderRoomList() {
   });
 }
 
-function renderDMList() {
+function renderDMList(loading = false) {
   const list = document.getElementById("dm-list");
   list.innerHTML = "";
+
+  if (loading) {
+    [1, 2, 3].forEach(() => {
+      const item = document.createElement("div");
+      item.className = "channel-item channel-skeleton";
+      item.innerHTML = `
+        <span class="skeleton-avatar"></span>
+        <span class="skeleton-line full"></span>
+      `;
+      list.appendChild(item);
+    });
+    return;
+  }
+
+  if (!dmContacts.length) {
+    list.innerHTML = `
+      <div class="channel-empty">
+        <p>No direct messages</p>
+        <span>Use Find user to start a private conversation.</span>
+      </div>
+    `;
+    return;
+  }
+
   dmContacts.forEach((contact) => {
     const contactId = contact.id || contact._id;
     const item = document.createElement("div");
@@ -352,6 +511,7 @@ async function openRoom(room) {
 
   document.getElementById("empty-state").classList.add("hidden");
   document.getElementById("chat-view").classList.remove("hidden");
+  closeMobileSidebar();
 
   document.getElementById("chat-header-avatar").textContent = "#";
   document.getElementById("chat-header-name").textContent = room.name;
@@ -397,6 +557,7 @@ function openDM(contact) {
 
   document.getElementById("empty-state").classList.add("hidden");
   document.getElementById("chat-view").classList.remove("hidden");
+  closeMobileSidebar();
   document.getElementById("invite-btn").style.display = "none";
 
   document.getElementById("chat-header-avatar").textContent = (contact.name ||
@@ -495,16 +656,25 @@ function appendMessage(msg, scroll = true) {
 async function openBrowseRooms() {
   openModal("modal-browse");
   const list = document.getElementById("browse-rooms-list");
-  list.innerHTML =
-    '<div style="padding:20px;text-align:center;color:var(--text-3)">Loading...</div>';
+  list.innerHTML = `
+    <div class="browse-loading">
+      <div class="browse-loading-spinner"></div>
+      <p>Loading public rooms…</p>
+      <span>Discover community spaces and join conversations instantly.</span>
+    </div>
+  `;
 
   try {
     const res = await apiFetch("/rooms/public");
     list.innerHTML = "";
 
     if (res.data.length === 0) {
-      list.innerHTML =
-        '<div style="padding:20px;text-align:center;color:var(--text-3)">No public rooms yet</div>';
+      list.innerHTML = `
+        <div class="browse-empty">
+          <p>No public rooms yet</p>
+          <span>Come back soon or create your own room to kick things off.</span>
+        </div>
+      `;
       return;
     }
 
@@ -532,8 +702,12 @@ async function openBrowseRooms() {
     });
   } catch (e) {
     console.log("browse rooms error:", e);
-    list.innerHTML =
-      '<div style="padding:20px;text-align:center;color:var(--red)">Couldn’t load public rooms right now. Please try again.</div>';
+    list.innerHTML = `
+      <div class="browse-empty error">
+        <p>Couldn’t load public rooms</p>
+        <span>Please try again in a moment.</span>
+      </div>
+    `;
   }
 }
 
@@ -710,10 +884,42 @@ async function inviteUser() {
 
 // ── MODAL HELPERS ──
 function openModal(id) {
-  document.getElementById(id).classList.remove("hidden");
+  const modal = document.getElementById(id);
+  if (!modal) return;
+
+  lastFocusedElement = document.activeElement;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+
+  const focusTarget = modal.querySelector(FOCUSABLE_SELECTOR);
+  if (focusTarget) {
+    focusTarget.focus({ preventScroll: true });
+  }
 }
+
 function closeModal(id) {
-  document.getElementById(id).classList.add("hidden");
+  const modal = document.getElementById(id);
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+
+  if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+    lastFocusedElement.focus({ preventScroll: true });
+  }
+}
+
+function closeAllModals() {
+  document
+    .querySelectorAll(".modal-overlay:not(.hidden)")
+    .forEach((modal) => {
+      modal.classList.add("hidden");
+      modal.setAttribute("aria-hidden", "true");
+    });
+
+  if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
+    lastFocusedElement.focus({ preventScroll: true });
+  }
 }
 
 // ── API HELPER ──
@@ -776,6 +982,9 @@ async function apiFetch(path, method = "GET", body = null, auth = true) {
 function showToast(msg, type = "") {
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
+  toast.setAttribute("role", "status");
+  toast.setAttribute("aria-live", "polite");
+  toast.setAttribute("aria-atomic", "true");
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
